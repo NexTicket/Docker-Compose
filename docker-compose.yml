@@ -1,0 +1,67 @@
+services:
+  frontend:
+    build: ./nextjs-frontend  # Tells Docker to build the image from this folder
+    container_name: nextjs_frontend
+    ports:
+      - "3000:3001" 
+    restart: always
+
+  apigateway:
+    image: ddrmin/api-gateway:latest
+    container_name: express_apigateway
+    restart: always
+    ports:
+      # Exposes the container's port 3000 to the host machine's port 5000
+      - "5000:3000" 
+    volumes:
+      # This maps your local Firebase key to a path inside the container 🔑
+      - ./firebase-service-account.json:/app/firebase-service-account.json
+    environment:
+      # Server Configuration
+      - PORT=${PORT}
+      - NODE_ENV=${NODE_ENV}
+
+      # Firebase Configuration (path is now inside the container)
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
+
+      # Backend Services URLs (using Docker service names) 🔗
+      - NOTIFICATION_SERVICE_URL=${NOTIFICATION_SERVICE_URL}
+      - EVENT_SERVICE_URL=${EVENT_SERVICE_URL}
+      - TICKET_SERVICE_URL=${TICKET_SERVICE_URL}
+      - PUBLIC_SERVICE_URL=${PUBLIC_SERVICE_URL}
+
+      # Security Configuration
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+
+      # Rate Limiting
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+
+      # Proxy Configuration
+      - PROXY_TIMEOUT=${PROXY_TIMEOUT}
+
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL}
+
+  
+  notification-service:
+    image: your-dockerhub-username/notification-service:latest
+    container_name: notification_service
+    # No 'ports' needed unless you want to access it directly from the host
+    # The API gateway can reach it using its service name and internal port (e.g., 5000)
+
+  event-service:
+    image: your-dockerhub-username/event-service:latest
+    container_name: event_service
+
+  ticket-service:
+    image: your-dockerhub-username/ticket-service:latest
+    container_name: ticket_service
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+
+  public-service:
+    image: your-dockerhub-username/public-service:latest
+    container_name: public_service
