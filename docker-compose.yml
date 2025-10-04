@@ -3,7 +3,7 @@ services:
     build: ./nextjs-frontend  # Tells Docker to build the image from this folder
     container_name: nextjs_frontend
     ports:
-      - "3000:3001" 
+      - "3000:3000" 
     restart: always
 
   apigateway:
@@ -11,14 +11,13 @@ services:
     container_name: express_apigateway
     restart: always
     ports:
-      # Exposes the container's port 3000 to the host machine's port 5000
-      - "5000:3000" 
+      - "5000:5000" 
     volumes:
       # This maps your local Firebase key to a path inside the container 🔑
       - ./firebase-service-account.json:/app/firebase-service-account.json
     environment:
       # Server Configuration
-      - PORT=${PORT}
+      - PORT=${APIGATEWAY_PORT}
       - NODE_ENV=${NODE_ENV}
 
       # Firebase Configuration (path is now inside the container)
