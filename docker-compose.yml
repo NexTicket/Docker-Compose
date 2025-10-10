@@ -66,6 +66,7 @@ services:
     environment:
       - DATABASE_URL=${TICKET_SERVICE_DATABASE_URL}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
       - REDIS_URL=${REDIS_URL}
       - APIGATEWAY_DOCKER_URL=${APIGATEWAY_URL}
@@ -78,6 +79,14 @@ services:
     volumes:
       - redis-data:/data
     restart: unless-stopped
+
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    volumes:
+      - "${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro"
+    ports:
+      - "9999:8080"
 
 volumes:
   redis-data:
