@@ -2,36 +2,44 @@ services:
   kafka:
     image: confluentinc/cp-kafka:latest
     container_name: kafka
-    ports:
-      - "9092:9092" 
+    volumes:
+      - kafka-data:/var/lib/kafka/data
     environment:
       KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT_HOST://localhost:9092,PLAINTEXT://kafka:29092'
       KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
-      KAFKA_BROKER_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
-      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://kafka:29093'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_LISTENERS: 'PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT://0.0.0.0:29092,CONTROLLER://kafka:9093'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk' 
+      CLUSTER_ID: 'vp3awo5eSS2vxlVu66xhfQ'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    restart: unless-stopped
+    networks:
+      - neXt
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
 
   kafka-ui:
-    image: docker.redpanda.com/redpandadata/console:latest
+    image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
-      - "8080:8080"
+      - "9000:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
     depends_on:
       - kafka
-    environment:
-      KAFKA_BROKERS: "kafka:9092" 
-    restart: unless-stopped
+      - dozzle
+    networks:
+      - neXt
+
 
   frontend:
     build: ./nextjs-frontend  
@@ -78,6 +86,9 @@ services:
       # Logging Configuration
       - LOG_LEVEL=${LOG_LEVEL}
 
+    networks:
+      - neXt
+
   
   notifi:
     image: your-dockerhub-username/notification-service:latest
@@ -94,6 +105,7 @@ services:
     container_name: ticket_service
     depends_on:
       - redis
+      - dozzle
     ports:
       - "8000:8000"
     volumes:
@@ -105,6 +117,8 @@ services:
       - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
       - REDIS_URL=${REDIS_URL}
       - APIGATEWAY_DOCKER_URL=${APIGATEWAY_URL}
+    networks:
+      - neXt
 
   redis:
     image: "redis:alpine"
@@ -114,6 +128,8 @@ services:
     volumes:
       - redis-data:/data
     restart: unless-stopped
+    networks:
+      - neXt
 
   dozzle:
     image: amir20/dozzle:latest
@@ -122,8 +138,14 @@ services:
       - "${DOCKER_SOCKET_PATH:-/var/run/docker.sock}:/var/run/docker.sock:ro"
     ports:
       - "9999:8080"
+    networks:
+      - neXt
 
 volumes:
   redis-data:
-  kafka_data:
-    driver: local
+  kafka-data:
+
+
+networks:
+  neXt:
+    driver: bridge
