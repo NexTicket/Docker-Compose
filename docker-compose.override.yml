@@ -1,0 +1,48 @@
+services:
+  kafka:
+    ports:
+      - "9092:9092"      # Primary listener for host access (PLAINTEXT_HOST)
+      - "29092:29092"    # Internal listener (PLAINTEXT)
+      - "9093:9093"      # Controller listener
+
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1G 
+
+  kafka-ui:
+    ports:
+      - "9000:8080"
+    
+    restart: always
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M 
+ 
+ 
+ 
+  apigateway:
+    # We are overriding the environment variables for local development
+    environment:
+      - PORT=${APIGATEWAY_PORT}
+      - NODE_ENV=development
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - PROXY_TIMEOUT=${PROXY_TIMEOUT}
+      - LOG_LEVEL=${LOG_LEVEL}
+
+
+      - EVENT_SERVICE_URL=http://host.docker.internal:4000
+      - NOTIFICATION_SERVICE_URL=http://host.docker.internal:4001
+      - TICKET_SERVICE_URL=http://host.docker.internal:8000
+      - USER_SERVICE_URL=http://host.docker.internal:6001
+      - PUBLIC_SERVICE_URL=http://host.docker.internal:4000
+
+    restart: always
+

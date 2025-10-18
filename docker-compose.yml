@@ -89,16 +89,58 @@ services:
     networks:
       - neXt
 
-  
+
   notifi:
-    image: your-dockerhub-username/notification-service:latest
+    build: ../Notification_Service
     container_name: notification_service
-    # No 'ports' needed unless you want to access it directly from the host
-    # The API gateway can reach it using its service name and internal port (e.g., 5000)
+    ports:
+      - "5001:5001"
+    depends_on:
+      - redis2
+    environment:
+      - PORT=${NOTIFICATION_SERVICE_PORT}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL}
+      - EVMS_API_URL=${EVMS_API_URL}
+      - USER_SERVICE_API_URL=${USER_SERVICE_API_URL}
+      - ORDER_SERVICE_API_URL=${TICKET_SERVICE_URL}
+      - REDIS_URL=${REDIS_URL2}
+      - DATABASE_URL=${NOTIFICATION_SERVICE_DATABASE_URL}
+      - DIRECT_URL=${NOTIFICATION_SERVICE_DIRECT_URL}
+    networks:
+      - neXt
+    
+
+
+  redis2:
+    image: "redis:alpine"
+    container_name: redisDB2
+    ports:
+      - "6380:6380"
+    volumes:
+      - redis-data2:/data
+    restart: unless-stopped
+    networks:
+      - neXt
 
   event:
-    image: your-dockerhub-username/event-service:latest
+    image: ddrmin/event-and-venue-service:latest
     container_name: event_service
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./firebase-service-account.json:/app/firebase-service-account.json
+    environment:
+      - PORT=4000
+      - NODE_ENV=development
+      - DATABASE_URL=${EVENT_SERVICE_DATABASE_URL}
+      - DIRECT_URL=${EVENT_SERVICE_DIRECT_URL}
+      - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
+      - CLOUDINARY_CLOUD_NAME=${EVENT_SERVICE_CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${EVENT_SERVICE_CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${EVENT_SERVICE_CLOUDINARY_API_SECRET}
+    networks:
+      - neXt
 
   ticket:
     image: ddrmin/ticket-and-order-service:latest
@@ -144,6 +186,7 @@ services:
 volumes:
   redis-data:
   kafka-data:
+  redis-data2:
 
 
 networks:
