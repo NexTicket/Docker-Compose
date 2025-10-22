@@ -34,6 +34,7 @@ services:
       KAFKA_BROKERCONNECT: kafka:29092
     depends_on:
       - kafka
+      - dozzle
     networks:
       - neXt
 
@@ -156,6 +157,21 @@ services:
       - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
       - REDIS_URL=${REDIS_URL}
       - APIGATEWAY_DOCKER_URL=${APIGATEWAY_URL}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_CLIENT_ID=ticket-order-service
+      - KAFKA_NOTIFICATIONS_TOPIC=ticket_notifications
+      - KAFKA_LOG_LEVEL=INFO
+
+      # Kafka Producer Advanced Configuration
+      - KAFKA_ACKS=all
+      - KAFKA_RETRIES=3
+      - KAFKA_RETRY_BACKOFF_MS=200
+      - KAFKA_LINGER_MS=10
+      - KAFKA_BATCH_SIZE=16384
+      - KAFKA_COMPRESSION_TYPE=snappy
+      - KAFKA_MAX_IN_FLIGHT_REQUESTS=5
+      - KAFKA_ENABLE_IDEMPOTENCE=true
+      - KAFKA_SOCKET_KEEPALIVE_ENABLE=true
     networks:
       - neXt
 
