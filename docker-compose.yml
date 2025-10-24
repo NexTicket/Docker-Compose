@@ -17,18 +17,17 @@ services:
   kafka:
     image: confluentinc/cp-kafka:latest
     container_name: kafka
-    restart: unless-stopped
     volumes:
       - kafka-data:/var/lib/kafka/data
     environment:
       KAFKA_NODE_ID: 1
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092'
-      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT_HOST://localhost:9092,PLAINTEXT://kafka:29092'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
-      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://kafka:9093'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENERS: 'PLAINTEXT_HOST://0.0.0.0:9092,PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       CLUSTER_ID: 'vp3awo5eSS2vxlVu66xhfQ'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -36,53 +35,104 @@ services:
     networks:
       - neXt
     healthcheck:
-      # Fixed: This now checks the internal Docker port
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:29092", "--list"]
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 15s
       timeout: 10s
       retries: 10
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: obsidiandynamics/kafdrop:latest
     container_name: kafka-ui
-    restart: unless-stopped
-    # No ports - keep this internal. We can expose it with Caddy later if you want.
+    ports:
+      - "9000:9000"
     environment:
-      - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      KAFKA_BROKERCONNECT: kafka:29092
     depends_on:
       - kafka
+      - dozzle
     networks:
       - neXt
-
-  # --- FRONTEND SERVICE REMOVED (It's on Vercel) ---
 
   apigateway:
     image: ddrmin/api-gateway:latest
     container_name: apigateway
     restart: unless-stopped
-    # No ports - Caddy will handle this.
     volumes:
       - ./firebase-service-account.json:/app/firebase-service-account.json
-    env_file:
-      - ./.env # All env variables are now loaded from the .env file
+    environment:
+      # Server Configuration
+      - PORT=${APIGATEWAY_PORT}
+      - NODE_ENV=${NODE_ENV}
+
+      # Firebase Configuration (path is now inside the container)
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
+
+      # Backend Services URLs (using Docker service names) 
+      - NOTIFICATION_SERVICE_URL=${NOTIFICATION_SERVICE_URL}
+      - EVENT_SERVICE_URL=${EVENT_SERVICE_URL}
+      - TICKET_SERVICE_URL=${TICKET_SERVICE_URL}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+      - PUBLIC_SERVICE_URL=${PUBLIC_SERVICE_URL}
+
+      # Security Configuration
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+
+      # Rate Limiting
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+
+      # Proxy Configuration
+      - PROXY_TIMEOUT=${PROXY_TIMEOUT}
+
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL}
+      
     networks:
       - neXt
     depends_on:
       - event
       - ticket
 
-  notifi:
-    # --- IMPORTANT ---
-    # You must build and push this image to Docker Hub
+  notification:
     image: ddrmin/notification-service:latest
     container_name: notification_service
     restart: unless-stopped
-    # No ports - internal only
+    volumes:
+      - ./gcs-service-account.json:/app/gcs-service-account.json
+      - ./firebase-service-account.json:/app/firebase-service-account.json
     depends_on:
       - redis2
-    env_file:
-      - ./.env
+    environment:
+      - PORT=${NOTIFICATION_SERVICE_PORT}
+
+      # SendGrid Configuration
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL}
+      - SENDGRID_TEMPLATE_ID=${SENDGRID_TEMPLATE_ID}
+
+      # External Service URLs
+      - EVENT_SERVICE_URL=${EVENT_SERVICE_URL}
+
+      # Redis Configuration
+      - REDIS_URL=${REDIS_URL2}
+
+      # Database Configuration
+      - DATABASE_URL=${NOTIFICATION_SERVICE_DATABASE_URL}
+      - DIRECT_URL=${NOTIFICATION_SERVICE_DIRECT_URL}
+
+      # Kafka Configuration
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_GROUP_ID=notification-service-group
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
+
+      # Google Cloud Storage Configuration
+      - GCS_PROJECT_ID=${GCS_PROJECT_ID}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME}
+      - GCS_KEY_FILE=${GCS_KEY_FILE}
+
+      # Firebase Admin SDK Configuration
+      - FIREBASE_SERVICE_ACCOUNT_KEY=${FIREBASE_SERVICE_ACCOUNT_PATH}
     networks:
       - neXt
 
@@ -90,7 +140,6 @@ services:
     image: "redis:alpine"
     container_name: redisDB2
     restart: unless-stopped
-    # No ports - internal only
     volumes:
       - redis-data2:/data
     networks:
@@ -100,11 +149,10 @@ services:
     image: ddrmin/event-and-venue-service:latest
     container_name: event_service
     restart: unless-stopped
-    # No ports - internal only
     volumes:
       - ./firebase-service-account.json:/app/firebase-service-account.json
     environment:
-      - PORT=4000
+      - PORT=${EVENT_SERVICE_PORT}
       - NODE_ENV=development
       - DATABASE_URL=${EVENT_SERVICE_DATABASE_URL}
       - DIRECT_URL=${EVENT_SERVICE_DIRECT_URL}
@@ -121,7 +169,6 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
-    # No ports - internal only
     volumes:
       - ./firebase-service-account.json:/app/firebase-service-account.json
     environment:
@@ -138,7 +185,6 @@ services:
     image: "redis:alpine"
     container_name: redisDB
     restart: unless-stopped
-    # No ports - internal only
     volumes:
       - redis-data:/data
     networks:
@@ -148,7 +194,6 @@ services:
     image: amir20/dozzle:latest
     container_name: dozzle
     restart: unless-stopped
-    # No ports - internal only
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     networks:
