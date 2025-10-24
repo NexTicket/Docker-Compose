@@ -43,3 +43,8 @@ services:
 
     restart: always
 
+  dozzle:
+    ports:
+      - "9999:8080"
+    restart: always
+
