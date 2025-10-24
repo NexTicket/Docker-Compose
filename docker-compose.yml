@@ -58,7 +58,6 @@ services:
       KAFKA_BROKERCONNECT: kafka:29092
     depends_on:
       - kafka
-      - dozzle
     networks:
       - neXt
     deploy:
@@ -103,9 +102,6 @@ services:
       
     networks:
       - neXt
-    depends_on:
-      - event
-      - ticket
 
   notification:
     image: ddrmin/notification-service:latest
@@ -116,6 +112,7 @@ services:
       - ./firebase-service-account.json:/app/firebase-service-account.json
     depends_on:
       - redis2
+      - kafka
     environment:
       - PORT=${NOTIFICATION_SERVICE_PORT}
 
