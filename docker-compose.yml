@@ -14,6 +14,15 @@ services:
     depends_on:
       - apigateway
 
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: dozzle
+    restart: unless-stopped
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - neXt
+
   kafka:
     image: confluentinc/cp-kafka:latest
     container_name: kafka
@@ -52,6 +61,10 @@ services:
       - dozzle
     networks:
       - neXt
+    deploy:
+      resources:
+        limits:
+          memory: 500M
 
   apigateway:
     image: ddrmin/api-gateway:latest
@@ -136,15 +149,6 @@ services:
     networks:
       - neXt
 
-  redis2:
-    image: "redis:alpine"
-    container_name: redisDB2
-    restart: unless-stopped
-    volumes:
-      - redis-data2:/data
-    networks:
-      - neXt
-
   event:
     image: ddrmin/event-and-venue-service:latest
     container_name: event_service
@@ -178,8 +182,24 @@ services:
       - FIREBASE_SERVICE_ACCOUNT_PATH=${FIREBASE_SERVICE_ACCOUNT_PATH}
       - REDIS_URL=${REDIS_URL}
       - APIGATEWAY_DOCKER_URL=${APIGATEWAY_URL}
+
+      # Kafka Configuration
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092 
+      - KAFKA_CLIENT_ID=ticket-order-service
+      - KAFKA_NOTIFICATIONS_TOPIC=ticket_notifications
+      - KAFKA_LOG_LEVEL=INFO
+      - KAFKA_ACKS=all
+      - KAFKA_RETRIES=3
+      - KAFKA_RETRY_BACKOFF_MS=200
+      - KAFKA_LINGER_MS=10
+      - KAFKA_BATCH_SIZE=16384
+      - KAFKA_COMPRESSION_TYPE=snappy
+      - KAFKA_MAX_IN_FLIGHT_REQUESTS=5
+      - KAFKA_ENABLE_IDEMPOTENCE=true
+      - KAFKA_SOCKET_KEEPALIVE_ENABLE=true
     networks:
       - neXt
+
 
   redis:
     image: "redis:alpine"
@@ -190,15 +210,15 @@ services:
     networks:
       - neXt
 
-  dozzle:
-    image: amir20/dozzle:latest
-    container_name: dozzle
+  redis2:
+    image: "redis:alpine"
+    container_name: redisDB2
     restart: unless-stopped
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - redis-data2:/data
     networks:
       - neXt
-
+      
 volumes:
   redis-data:
   kafka-data:
