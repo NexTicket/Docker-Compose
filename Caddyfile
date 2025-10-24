@@ -5,3 +5,7 @@ apigateway.ddrmin.me {
 logs.ddrmin.me {
     reverse_proxy dozzle:8080
 }
+
+kafka.ddrmin.me {
+    reverse_proxy kafka-ui:9000
+}

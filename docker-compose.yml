@@ -52,8 +52,6 @@ services:
   kafka-ui:
     image: obsidiandynamics/kafdrop:latest
     container_name: kafka-ui
-    ports:
-      - "9000:9000"
     environment:
       KAFKA_BROKERCONNECT: kafka:29092
     depends_on:
