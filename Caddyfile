@@ -1,0 +1,7 @@
+apigateway.ddrmin.me {
+    reverse_proxy apigateway:5000
+}
+
+logs.ddrmin.me {
+    reverse_proxy dozzle:8080
+}
