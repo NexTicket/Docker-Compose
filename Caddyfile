@@ -7,5 +7,5 @@ logs.ddrmin.me {
 }
 
 kafka.ddrmin.me {
-    reverse_proxy kafka-ui:9000
+    reverse_proxy ticket:8000
 }
